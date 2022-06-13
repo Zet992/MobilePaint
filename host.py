@@ -26,7 +26,8 @@ class Paint(Widget):
         print('Connected by', addr)
         while True:
             data = conn.recv(1024)
-            print(data)
+            if data:
+                print(data)
 
     def update_canvas(self, *args, pos=(5, 5)):
         with self.canvas:
