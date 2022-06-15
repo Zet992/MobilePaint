@@ -15,12 +15,21 @@ from kivy.uix.slider import Slider
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.stencilview import StencilView
+from kivy.uix.screenmanager import ScreenManager, Screen
 
 from kivy.core.window import Window
 
 
 r = 10
 color = [1, 1, 1, 1]
+
+
+class MenuScreen(Screen):
+    pass
+
+
+class SettingsScreen(Screen):
+    pass
 
 
 class Paint(Widget):
@@ -45,9 +54,10 @@ class Paint(Widget):
         with self.canvas:
             Color(*color)
             Ellipse(size=(r, r), pos=pos)
-            if self.prev_pos and self.prev_pos != (5, 5):
-                Line(points=(*self.prev_pos, *pos), width=r)
-            self.prev_pos = pos
+            line_point = (pos[0] + r // 2, pos[1] + r // 2)
+            if self.prev_pos:
+                Line(points=(*self.prev_pos, *line_point), width=r)
+            self.prev_pos = line_point
 
     def on_touch_down(self, touch):
         self.update_canvas(pos=[touch.x - r // 2,
@@ -69,14 +79,33 @@ class Paint(Widget):
 
 class PaintApp(App):
     def build(self):
-        parent = Widget()
+        self.sm = ScreenManager()
+        menu = MenuScreen(name='menu')
+        settings = SettingsScreen(name='settings')
 
         self.painter = Paint()
-        stencil_layout = BoxStencil(cols=1, width=Window.width, height=Window.height-145)
+        stencil_layout = BoxStencil(cols=1, width=Window.width,
+                                    height=Window.height-145)
         stencil_layout.set_top(Window.height)
         stencil_layout.add_widget(self.painter)
 
-        grid_layout = GridLayout(cols=5, row_default_height=100, width=300)
+        menu_layout = GridLayout(rows=1, row_default_height=100,
+                                 row_force_default=True)
+        menu_layout.set_top(100)
+        clear_btn = Button(text="Clear")
+        clear_btn.bind(on_release=self.clear_canvas)
+        menu_layout.add_widget(clear_btn)
+        
+        settings_btn = Button(text='Settings')
+        settings_btn.bind(on_press=self.go_to_settings)
+        menu_layout.add_widget(settings_btn)
+
+        menu.add_widget(stencil_layout)
+        menu.add_widget(menu_layout)
+        self.sm.add_widget(menu)
+
+        grid_layout = GridLayout(cols=5, row_default_height=100,
+                                 row_force_default=True, width=300)
         grid_layout.set_top(125)
         text_layout = GridLayout(cols=5, width=300)
         text_layout.set_top(65)
@@ -97,12 +126,6 @@ class PaintApp(App):
                          value_track=True)
         point_r.bind(value=change_ra)
 
-        clear_btn = Button(text="Clear")
-        clear_btn.set_right(798)
-        clear_btn.set_top(100)
-        clear_btn.bind(on_release=self.clear_canvas)
-
-        parent.add_widget(stencil_layout)
         grid_layout.add_widget(color_r)
         grid_layout.add_widget(color_g)
         grid_layout.add_widget(color_b)
@@ -113,14 +136,28 @@ class PaintApp(App):
         text_layout.add_widget(Label(text='B'))
         text_layout.add_widget(Label(text='A'))
         text_layout.add_widget(Label(text='Size'))
-        parent.add_widget(grid_layout)
-        parent.add_widget(text_layout)
-        parent.add_widget(clear_btn)
 
-        return parent
+        menu_btn = Button(text='Back')
+        menu_btn.set_top(100)
+        menu_btn.set_right(798)
+        menu_btn.bind(on_press=self.go_to_menu)
+
+        settings.add_widget(grid_layout)
+        settings.add_widget(text_layout)
+        settings.add_widget(menu_btn)
+
+        self.sm.add_widget(settings)
+
+        return self.sm
 
     def clear_canvas(self, obj):
         self.painter.canvas.clear()
+
+    def go_to_settings(self, obj):
+        self.sm.current = 'settings'
+
+    def go_to_menu(self, obj):
+        self.sm.current = 'menu'
 
 
 class BoxStencil(GridLayout, StencilView):
