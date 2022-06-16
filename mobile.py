@@ -46,9 +46,8 @@ class Paint(Widget):
             Line(points=(0, 145, Window.width, 145))
 
         # addr = ('127.0.0.1', 8080)
-        # s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # s.connect(addr)
-        # s.sendall(bytes('information', encoding='utf-8'))
+        # self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # self.s.connect(addr)
 
     def update_canvas(self, *args, pos=(5, 5)):
         with self.canvas:
@@ -57,7 +56,8 @@ class Paint(Widget):
             line_point = (pos[0] + r // 2, pos[1] + r // 2)
             if self.prev_pos:
                 Line(points=(*self.prev_pos, *line_point), width=r)
-            self.prev_pos = line_point
+            if pos != (5, 5):
+                self.prev_pos = line_point
 
     def on_touch_down(self, touch):
         self.update_canvas(pos=[touch.x - r // 2,
@@ -89,9 +89,9 @@ class PaintApp(App):
         stencil_layout.set_top(Window.height)
         stencil_layout.add_widget(self.painter)
 
-        menu_layout = GridLayout(rows=1, row_default_height=100,
+        menu_layout = GridLayout(rows=1, row_default_height=135,
                                  row_force_default=True)
-        menu_layout.set_top(100)
+        menu_layout.set_top(240 - Window.height)
         clear_btn = Button(text="Clear")
         clear_btn.bind(on_release=self.clear_canvas)
         menu_layout.add_widget(clear_btn)
@@ -102,29 +102,28 @@ class PaintApp(App):
 
         menu.add_widget(stencil_layout)
         menu.add_widget(menu_layout)
-        self.sm.add_widget(menu)
 
-        grid_layout = GridLayout(cols=5, row_default_height=100,
-                                 row_force_default=True, width=300)
-        grid_layout.set_top(125)
-        text_layout = GridLayout(cols=5, width=300)
-        text_layout.set_top(65)
+        grid_layout = GridLayout(rows=1, row_default_height=500,
+                                 row_force_default=True)
+        grid_layout.set_top(55)
+        text_layout = GridLayout(rows=1)
+        text_layout.set_top(-150)
 
         color_r = Slider(min=0, max=100, value=100, orientation='vertical',
                          value_track=True, value_track_color=[1, 0, 0, 1])
-        color_r.bind(value_normalized=change_r)
+        color_r.bind(value_normalized=self.change_r)
         color_g = Slider(min=0, max=100, value=100, orientation='vertical',
                          value_track=True, value_track_color=[0, 1, 0, 1])
-        color_g.bind(value_normalized=change_g)
+        color_g.bind(value_normalized=self.change_g)
         color_b = Slider(min=0, max=100, value=100, orientation='vertical',
                          value_track=True, value_track_color=[0, 0, 1, 1])
-        color_b.bind(value_normalized=change_b)
+        color_b.bind(value_normalized=self.change_b)
         color_a = Slider(min=0, max=100, value=100, orientation='vertical',
                          value_track=True)
-        color_a.bind(value_normalized=change_a)
+        color_a.bind(value_normalized=self.change_a)
         point_r = Slider(min=1, max=25, value=10, orientation='vertical',
                          value_track=True)
-        point_r.bind(value=change_ra)
+        point_r.bind(value=self.change_ra)
 
         grid_layout.add_widget(color_r)
         grid_layout.add_widget(color_g)
@@ -136,53 +135,62 @@ class PaintApp(App):
         text_layout.add_widget(Label(text='B'))
         text_layout.add_widget(Label(text='A'))
         text_layout.add_widget(Label(text='Size'))
+        text_layout.add_widget(Label(text=''))
 
         menu_btn = Button(text='Back')
-        menu_btn.set_top(100)
-        menu_btn.set_right(798)
         menu_btn.bind(on_press=self.go_to_menu)
+        grid_layout.add_widget(menu_btn)
 
         settings.add_widget(grid_layout)
         settings.add_widget(text_layout)
-        settings.add_widget(menu_btn)
 
+        self.sm.add_widget(menu)
         self.sm.add_widget(settings)
+
+        self.draw_color_circle()
 
         return self.sm
 
     def clear_canvas(self, obj):
         self.painter.canvas.clear()
 
+    def change_r(self, obj, value):
+        self.draw_color_circle()
+        color[0] = value
+
+    def change_g(self, obj, value):
+        self.draw_color_circle()
+        color[1] = value
+
+    def change_b(self, obj, value):
+        self.draw_color_circle()
+        color[2] = value
+
+    def change_a(self, obj, value):
+        self.draw_color_circle()
+        color[3] = value
+
+    def change_ra(self, obj, value):
+        global r
+        self.draw_color_circle()
+        r = value
+
+    def draw_color_circle(self):
+        with self.sm.get_screen('settings').canvas:
+            Color(*color)
+            Ellipse(pos=(0, Window.height - 50), size=(50, 50))
+
     def go_to_settings(self, obj):
+        self.sm.transition.direction = 'left'
         self.sm.current = 'settings'
 
     def go_to_menu(self, obj):
+        self.sm.transition.direction = 'right'
         self.sm.current = 'menu'
 
 
 class BoxStencil(GridLayout, StencilView):
     pass
-
-
-def change_r(obj, value):
-    color[0] = value
-
-
-def change_g(obj, value):
-    color[1] = value
-
-
-def change_b(obj, value):
-    color[2] = value
-
-
-def change_a(obj, value):
-    color[3] = value
-
-
-def change_ra(obj, value):
-    global r
-    r = value
 
 
 if __name__ == '__main__':
