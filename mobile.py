@@ -11,9 +11,11 @@ from kivy.clock import Clock
 from kivy.graphics import *
 
 from kivy.uix.gridlayout import GridLayout
+from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.slider import Slider
 from kivy.uix.label import Label
 from kivy.uix.button import Button
+from kivy.uix.textinput import TextInput
 from kivy.uix.stencilview import StencilView
 from kivy.uix.screenmanager import ScreenManager, Screen
 
@@ -22,6 +24,7 @@ from kivy.core.window import Window
 
 r = 10
 color = [1, 1, 1, 1]
+conn_socket = None
 
 
 class MenuScreen(Screen):
@@ -45,12 +48,9 @@ class Paint(Widget):
             Color(1, 1, 1, mode='rgb')
             Line(points=(0, 145, Window.width, 145))
 
-        # addr = ('127.0.0.1', 8080)
-        # self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # self.s.connect(addr)
-
     def update_canvas(self, *args, pos=(5, 5)):
         with self.canvas:
+            pos = (int(pos[0]), int(pos[1]))
             Color(*color)
             Ellipse(size=(r, r), pos=pos)
             line_point = (pos[0] + r // 2, pos[1] + r // 2)
@@ -58,6 +58,13 @@ class Paint(Widget):
                 Line(points=(*self.prev_pos, *line_point), width=r)
             if pos != (5, 5):
                 self.prev_pos = line_point
+        if conn_socket:
+            try:
+                data = ",".join(map(str, list(color) + [r] + list(pos))) + ';'
+                conn_socket.sendall(bytes(data, encoding='utf-8'))
+                print('data is sent')
+            except ConnectionError:
+                print('computer is unavailable')
 
     def on_touch_down(self, touch):
         self.update_canvas(pos=[touch.x - r // 2,
@@ -80,29 +87,35 @@ class Paint(Widget):
 class PaintApp(App):
     def build(self):
         self.sm = ScreenManager()
-        menu = MenuScreen(name='menu')
-        settings = SettingsScreen(name='settings')
 
+        menu = MenuScreen(name='menu')
         self.painter = Paint()
         stencil_layout = BoxStencil(cols=1, width=Window.width,
                                     height=Window.height-145)
         stencil_layout.set_top(Window.height)
         stencil_layout.add_widget(self.painter)
+        menu.add_widget(stencil_layout)
 
         menu_layout = GridLayout(rows=1, row_default_height=135,
                                  row_force_default=True)
         menu_layout.set_top(240 - Window.height)
+
         clear_btn = Button(text="Clear")
         clear_btn.bind(on_release=self.clear_canvas)
         menu_layout.add_widget(clear_btn)
-        
+
         settings_btn = Button(text='Settings')
         settings_btn.bind(on_press=self.go_to_settings)
         menu_layout.add_widget(settings_btn)
 
-        menu.add_widget(stencil_layout)
-        menu.add_widget(menu_layout)
+        connection_btn = Button(text='Connection')
+        connection_btn.bind(on_press=self.go_to_conn_screen)
+        menu_layout.add_widget(connection_btn)
 
+        menu.add_widget(menu_layout)
+        self.sm.add_widget(menu)
+
+        settings = SettingsScreen(name='settings')
         grid_layout = GridLayout(rows=1, row_default_height=500,
                                  row_force_default=True)
         grid_layout.set_top(55)
@@ -143,9 +156,24 @@ class PaintApp(App):
 
         settings.add_widget(grid_layout)
         settings.add_widget(text_layout)
-
-        self.sm.add_widget(menu)
         self.sm.add_widget(settings)
+
+        conn_screen = Screen(name='conn')
+        conn_layout = BoxLayout(orientation='vertical')
+
+        self.address_input = TextInput(multiline=False)
+        conn_layout.add_widget(self.address_input)
+
+        connect_btn = Button(text='Connect')
+        connect_btn.bind(on_press=self.change_address)
+        conn_layout.add_widget(connect_btn)
+
+        menu_btn2 = Button(text='Back')
+        menu_btn2.bind(on_press=self.go_to_menu)
+        conn_layout.add_widget(menu_btn2)
+
+        conn_screen.add_widget(conn_layout)
+        self.sm.add_widget(conn_screen)
 
         self.draw_color_circle()
 
@@ -175,6 +203,12 @@ class PaintApp(App):
         self.draw_color_circle()
         r = value
 
+    def change_address(self, obj):
+        global conn_socket
+        conn_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        conn_socket.connect((self.address_input.text, 8080))
+        print('connection is successful')
+
     def draw_color_circle(self):
         with self.sm.get_screen('settings').canvas:
             Color(*color)
@@ -187,6 +221,10 @@ class PaintApp(App):
     def go_to_menu(self, obj):
         self.sm.transition.direction = 'right'
         self.sm.current = 'menu'
+
+    def go_to_conn_screen(self, obj):
+        self.sm.transition.direction = 'left'
+        self.sm.current = 'conn'
 
 
 class BoxStencil(GridLayout, StencilView):

@@ -16,23 +16,19 @@ class Paint(Widget):
         self.bind(pos=self.update_canvas)
         self.bind(size=self.update_canvas)
 
-        self.brush_size = [50, 50]
-
         addr = ('', 8080)
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind(addr)
-        s.listen(1)
-        conn, addr = s.accept()
+        print(socket.gethostname())
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.s.bind(addr)
+        self.s.listen(1)
+        self.conn, addr = self.s.accept()
         print('Connected by', addr)
-        while True:
-            data = conn.recv(1024)
-            if data:
-                print(data)
+        self.event = Clock.schedule_interval(self.receive_data, 1 / 24)
 
-    def update_canvas(self, *args, pos=(5, 5)):
+    def update_canvas(self, *args, pos=(5, 5), color=(1, 1, 1, 1), size=30):
         with self.canvas:
-            Color(random(), random(), random(), random())
-            Ellipse(size=self.brush_size, pos=pos)
+            Color(*color)
+            Ellipse(size=(size, size), pos=pos)
 
     def on_touch_down(self, touch):
         self.update_canvas(pos=[touch.x - self.brush_size[0] // 2,
@@ -50,6 +46,23 @@ class Paint(Widget):
             touch.ungrab(self)
             return None
 
+    def receive_data(self, dt):
+        try:
+            data = self.conn.recv(1024)
+            if not data:
+                return
+            points = data.split(b';')[:-1]
+            for point in points:
+                r, g, b, a, ra, x, y = map(float, point.split(b','))
+                color = (float(r), float(g), float(b), float(a))
+                self.update_canvas(pos=(x, y), color=color, size=int(ra))
+        except ConnectionError:
+            print('phone is unavailable')
+            self.event.cancel()
+            self.s.listen(1)
+            self.conn, addr = self.s.accept()
+            print('Connected by', addr)
+            self.event = Clock.schedule_interval(self.receive_data, 1 / 30)
 
 class PaintApp(App):
     def build(self):
