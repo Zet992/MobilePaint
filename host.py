@@ -1,6 +1,7 @@
 # 1600 x 900
 from random import random
 import socket
+import asyncio
 import json
 import logging
 
@@ -18,6 +19,7 @@ class Paint(Widget):
 
         addr = ('', 8080)
         print(socket.gethostname())
+        print(socket.gethostbyname(socket.gethostname()))
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.s.bind(addr)
         self.s.listen(1)

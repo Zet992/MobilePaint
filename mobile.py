@@ -205,9 +205,12 @@ class PaintApp(App):
 
     def change_address(self, obj):
         global conn_socket
-        conn_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        conn_socket.connect((self.address_input.text, 8080))
-        print('connection is successful')
+        try:
+            conn_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            conn_socket.connect((self.address_input.text, 8080))
+            print('Connection is successful')
+        except ConnectionError:
+            print("Connection is failed")
 
     def draw_color_circle(self):
         with self.sm.get_screen('settings').canvas:
