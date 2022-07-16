@@ -62,7 +62,6 @@ class Paint(Widget):
             try:
                 data = ",".join(map(str, list(color) + [r] + list(pos))) + ';'
                 conn_socket.sendall(bytes(data, encoding='utf-8'))
-                print('data is sent')
             except ConnectionError:
                 print('computer is unavailable')
 
