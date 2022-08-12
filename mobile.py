@@ -1,4 +1,3 @@
-# 720 x 1280
 import socket
 import json
 import logging
@@ -9,6 +8,7 @@ from kivy.app import App
 from kivy.uix.widget import Widget
 from kivy.clock import Clock
 from kivy.graphics import *
+from kivy.metrics import dp
 
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.boxlayout import BoxLayout
@@ -56,14 +56,15 @@ class Paint(Widget):
             line_point = (pos[0] + r // 2, pos[1] + r // 2)
             if self.prev_pos:
                 Line(points=(*self.prev_pos, *line_point), width=r)
-            if pos != (5, 5):
-                self.prev_pos = line_point
         if conn_socket:
             try:
-                data = ",".join(map(str, list(color) + [r] + list(pos))) + ';'
+                data = list(color) + [r] + list(pos) + [int(bool(self.prev_pos))]
+                data = ",".join(map(str, data)) + ';'
                 conn_socket.sendall(bytes(data, encoding='utf-8'))
             except ConnectionError:
                 print('computer is unavailable')
+        if pos != (5, 5):
+            self.prev_pos = line_point
 
     def on_touch_down(self, touch):
         self.update_canvas(pos=[touch.x - r // 2,
@@ -180,6 +181,11 @@ class PaintApp(App):
 
     def clear_canvas(self, obj):
         self.painter.canvas.clear()
+        if conn_socket:
+            try:
+                conn_socket.sendall(bytes('clear;', encoding='utf-8'))
+            except ConnectionError:
+                print('computer is unavailable')
 
     def change_r(self, obj, value):
         self.draw_color_circle()
@@ -207,6 +213,8 @@ class PaintApp(App):
         try:
             conn_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             conn_socket.connect((self.address_input.text, 8080))
+            res_dp = ','.join(list(map(str, (Window.width, Window.height, dp(1)))))
+            conn_socket.sendall(bytes(res_dp, encoding='utf-8'))
             print('Connection is successful')
         except ConnectionError:
             print("Connection is failed")
