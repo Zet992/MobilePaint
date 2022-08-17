@@ -26,8 +26,8 @@ class Paint(Widget):
             return
         with self.canvas:
             Color(*color)
-            size = size / self.k
-            pos = (pos[0] / self.k, pos[1] / self.k)
+            size = size * self.k
+            pos = (pos[0] * self.k, pos[1] * self.k)
             Ellipse(size=(size, size), pos=pos)
             line_point = (pos[0] + size // 2, pos[1] + size // 2)
             if line and self.prev_pos:
@@ -72,6 +72,8 @@ class PaintApp(App):
             data = await self.reader.read(1024)
             ph_width, ph_height, ph_dp = map(float, data.split(b','))
             self.root.k = Window.height / ph_height
+            Logger.info(f'Size of window: {Window.size}')
+            Logger.info(f'Size of phone: ({ph_width}, {ph_height})')
             Logger.info(f'Coefficient is {self.root.k}')
         except ConnectionError:
             Logger.warning('Phone is unavailable')
@@ -87,7 +89,6 @@ class PaintApp(App):
                 if not data:
                     return
                 commands = data.split(b';')[:-1]
-                Logger.info(str(data))
                 for command in commands:
                     if command == b'clear':
                         self.root.canvas.clear()

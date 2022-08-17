@@ -218,6 +218,8 @@ class PaintApp(App):
             print('Connection is successful')
         except ConnectionError:
             print("Connection is failed")
+        except OSError as err:
+            print(err)
 
     def draw_color_circle(self):
         with self.sm.get_screen('settings').canvas:
